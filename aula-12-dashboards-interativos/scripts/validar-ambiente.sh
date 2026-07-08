@@ -23,10 +23,10 @@ echo "==> 3. Status do Kibana"
 curl -s http://localhost:5601/api/status | grep -o '"level":"[a-z]*"' || echo "Kibana ainda não respondeu."
 
 echo ""
-echo "==> 4. Índices de sample data (devem aparecer após rodar carregar-sample-data.sh)"
+echo "==> 4. Índices de sample data (devem aparecer após rodar carregar-dados.sh)"
 curl -s -u "elastic:${ELASTIC_PASSWORD}" \
   "http://localhost:9200/_cat/indices/kibana_sample_data_*?v&h=index,docs.count,store.size" || \
-  echo "Nenhum índice de sample data ainda. Rode ./scripts/carregar-sample-data.sh"
+  echo "Nenhum índice de sample data ainda. Rode ./scripts/carregar-dados.sh"
 
 echo ""
 echo "Validação concluída."

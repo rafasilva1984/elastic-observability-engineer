@@ -66,7 +66,7 @@ docker compose restart kibana
 ## 7. Carregando o sample data
 
 ```bash
-./scripts/carregar-sample-data.sh
+./scripts/carregar-dados.sh
 ```
 
 ## 8. Executando o lab (o coração da aula)

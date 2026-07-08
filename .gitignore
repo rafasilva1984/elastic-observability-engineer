@@ -1,9 +1,9 @@
-# Segredos e ambiente local
+# Segredos e ambiente local — NUNCA subir
 .env
 *.env
 !.env.example
 
-# Dados locais
+# Dados de volumes / temporários
 es-data/
 snapshots/
 node_modules/

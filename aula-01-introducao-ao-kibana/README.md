@@ -25,7 +25,7 @@ e os recursos centrais do Kibana, sem precisar montar ingestão de dados.
         ▲
         │ sample data via API
    ┌────┴─────────────────────┐
-   │ carregar-sample-data.sh   │
+   │ carregar-dados.sh   │
    └───────────────────────────┘
 ```
 
@@ -80,7 +80,7 @@ docker compose restart kibana
 ### 6.2 Carregando os sample data sets
 
 ```bash
-./scripts/carregar-sample-data.sh
+./scripts/carregar-dados.sh
 ```
 
 Isso cria os índices `kibana_sample_data_ecommerce`,

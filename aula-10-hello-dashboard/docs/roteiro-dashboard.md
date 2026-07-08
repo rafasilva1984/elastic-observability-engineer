@@ -1,11 +1,11 @@
 # Roteiro guiado — construindo o "Hello Dashboard" (Aula 10)
 
 Dashboard final: **[ONP] Web Logs — Visão Operacional**
-Data view: `kibana_sample_data_logs` · Time range: **Last 7 days**
+Data view: `kibana_sample_data_logs` · Time range: **Last 15 days**
 
 ## Passo 0 — Preparar
 - Ambiente no ar (`docker compose up -d`) e sample data carregado
-  (`./scripts/carregar-sample-data.sh`).
+  (`./scripts/carregar-dados.sh`).
 
 ## Passo 1 — Criar o dashboard
 - Menu > **Dashboards > Create dashboard** (você entra em modo de edição

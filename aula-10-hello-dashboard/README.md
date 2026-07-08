@@ -32,7 +32,7 @@ painel Markdown pronto para colar em **`examples/painel-markdown.md`**.
 │ sample data  │    │  :5601    │
 └──────────────┘    └───────────┘
         ▲
-        └── scripts/carregar-sample-data.sh (Web Logs, eCommerce, Flights)
+        └── scripts/carregar-dados.sh (Web Logs, eCommerce, Flights)
 ```
 
 Sem ingestão, sem agente: o foco é 100% em visualização (escopo do curso
@@ -71,7 +71,7 @@ docker compose restart kibana
 ## 7. Carregando o sample data
 
 ```bash
-./scripts/carregar-sample-data.sh
+./scripts/carregar-dados.sh
 ```
 
 O script instala os 3 datasets oficiais via API do Kibana. Para esta aula,
