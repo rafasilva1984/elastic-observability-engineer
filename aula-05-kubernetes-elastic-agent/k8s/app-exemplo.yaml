@@ -1,0 +1,50 @@
+# Workload de exemplo - Aula 4
+# Um deployment saudável (nginx, 2 réplicas) e um pod "problemático" que
+# reinicia continuamente (CrashLoopBackOff proposital), para observarmos
+# restarts e estado do cluster na Infrastructure app e nos dashboards.
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: loja-web
+  namespace: default
+  labels:
+    app: loja-web
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: loja-web
+  template:
+    metadata:
+      labels:
+        app: loja-web
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:1.27-alpine
+          ports:
+            - containerPort: 80
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-problematico
+  namespace: default
+  labels:
+    app: pod-problematico
+spec:
+  restartPolicy: Always
+  containers:
+    - name: falha
+      image: busybox:1.36
+      # Vive 20 segundos e morre com erro — gera restarts contínuos,
+      # visíveis em kubernetes.pod.status e nos dashboards.
+      command: ["sh", "-c", "echo 'iniciando...'; sleep 20; echo 'falhando!'; exit 1"]

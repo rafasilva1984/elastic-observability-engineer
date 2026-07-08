@@ -1,0 +1,12 @@
+# Segredos e ambiente local
+.env
+*.env
+!.env.example
+
+# Dados locais
+es-data/
+snapshots/
+node_modules/
+__pycache__/
+*.pyc
+.DS_Store

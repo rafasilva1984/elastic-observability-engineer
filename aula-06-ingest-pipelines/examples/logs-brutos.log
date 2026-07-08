@@ -1,0 +1,12 @@
+2026-07-03T11:00:01Z INFO service=checkout user=311 client_ip=200.147.35.149 duration_ms=45 msg="pedido criado"
+2026-07-03T11:00:02Z INFO service=pagamento user=522 client_ip=189.45.201.10 duration_ms=120 msg="pagamento aprovado"
+2026-07-03T11:00:03Z WARN service=estoque user=618 client_ip=177.32.10.88 duration_ms=980 msg="tempo de resposta alto"
+2026-07-03T11:00:04Z INFO service=frete user=245 client_ip=8.8.8.8 duration_ms=77 msg="frete calculado"
+2026-07-03T11:00:05Z ERROR service=pagamento user=904 client_ip=189.45.201.10 duration_ms=2150 msg="falha ao processar pagamento"
+2026-07-03T11:00:06Z INFO service=checkout user=133 client_ip=1.1.1.1 duration_ms=52 msg="sessao iniciada"
+2026-07-03T11:00:07Z WARN service=frete user=760 client_ip=200.147.35.149 duration_ms=1104 msg="retry na chamada externa"
+2026-07-03T11:00:08Z ERROR service=estoque user=411 client_ip=177.32.10.88 duration_ms=3020 msg="timeout na chamada ao estoque"
+2026-07-03T11:00:09Z INFO service=pagamento user=87 client_ip=151.101.1.69 duration_ms=95 msg="pagamento aprovado"
+2026-07-03T11:00:10Z INFO service=checkout user=555 client_ip=200.221.2.45 duration_ms=61 msg="pedido criado"
+LINHA COMPLETAMENTE FORA DO PADRAO - sem estrutura nenhuma
+2026-07-03T11:00:12Z ERROR service=checkout user=302 client_ip=189.45.201.10 duration_ms=2890 msg="erro inesperado no checkout"

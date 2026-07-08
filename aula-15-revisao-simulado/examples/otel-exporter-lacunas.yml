@@ -1,0 +1,11 @@
+# TAREFA 8 do simulado: complete as 4 lacunas (____) deste trecho de
+# configuração do OpenTelemetry Collector para exportar ao APM Server
+# do Elastic com autenticação. Gabarito em docs/gabarito.md.
+
+exporters:
+  otlp/elastic:
+    endpoint: "____:____"        # host e porta do APM Server da arena
+    tls:
+      insecure: true
+    headers:
+      Authorization: "____ ${env:____}"   # esquema de auth + variável do token

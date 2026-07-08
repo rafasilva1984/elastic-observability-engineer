@@ -1,0 +1,126 @@
+version: "3.8"
+
+# Projeto: observabilidade-na-pratica-elastic-logs-docker
+# Objetivo: coletar logs de uma aplicação de exemplo com Elastic Agent +
+# Fleet, usando a integração Custom Logs (Filestream), e explorar tudo
+# no Discover do Kibana.
+#
+# Fontes oficiais do fluxo:
+# - https://www.elastic.co/docs/solutions/observability/logs/stream-any-log-file
+# - https://www.elastic.co/docs/reference/fleet
+
+services:
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:${STACK_VERSION}
+    container_name: es-onp
+    environment:
+      - node.name=es-onp
+      - discovery.type=single-node
+      - cluster.name=onp-cluster
+      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD}
+      - xpack.security.enabled=true
+      - xpack.security.http.ssl.enabled=false
+      - xpack.license.self_generated.type=trial
+      - "ES_JAVA_OPTS=-Xms1g -Xmx1g"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    ports:
+      - "9200:9200"
+    volumes:
+      - es-data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s -u elastic:${ELASTIC_PASSWORD} http://localhost:9200/_cluster/health | grep -q '\"status\":\"green\"\\|\"status\":\"yellow\"'"]
+      interval: 10s
+      timeout: 10s
+      retries: 20
+    networks:
+      - onp-net
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:${STACK_VERSION}
+    container_name: kb-onp
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    environment:
+      - SERVER_NAME=kibana-onp
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - ELASTICSEARCH_USERNAME=kibana_system
+      - ELASTICSEARCH_PASSWORD=${KIBANA_PASSWORD}
+      - XPACK_FLEET_AGENTS_ELASTICSEARCH_HOST=http://elasticsearch:9200
+    ports:
+      - "5601:5601"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:5601/api/status | grep -q '\"level\":\"available\"'"]
+      interval: 10s
+      timeout: 10s
+      retries: 30
+    networks:
+      - onp-net
+
+  # Fleet Server: gerencia os Elastic Agents (obrigatório em self-managed)
+  fleet-server:
+    image: docker.elastic.co/elastic-agent/elastic-agent:${STACK_VERSION}
+    container_name: fleet-server-onp
+    depends_on:
+      kibana:
+        condition: service_healthy
+    user: root
+    environment:
+      - FLEET_SERVER_ENABLE=true
+      - FLEET_SERVER_ELASTICSEARCH_HOST=http://elasticsearch:9200
+      - FLEET_SERVER_SERVICE_TOKEN=${FLEET_SERVER_SERVICE_TOKEN}
+      - FLEET_SERVER_POLICY_ID=fleet-server-policy
+      - FLEET_INSECURE=true
+      - KIBANA_FLEET_SETUP=true
+      - KIBANA_HOST=http://kibana:5601
+      - KIBANA_FLEET_USERNAME=elastic
+      - KIBANA_FLEET_PASSWORD=${ELASTIC_PASSWORD}
+    ports:
+      - "8220:8220"
+    networks:
+      - onp-net
+
+  # Aplicação de exemplo: gera logs realistas (INFO/WARN/ERROR) em
+  # /var/log/app/app.log, num volume compartilhado com o log-agent.
+  app-gerador:
+    image: alpine:3.20
+    container_name: app-gerador-onp
+    command: ["sh", "/gerador/gerar-logs.sh"]
+    volumes:
+      - ./examples/gerador:/gerador:ro
+      - app-logs:/var/log/app
+    networks:
+      - onp-net
+
+  # Elastic Agent que coleta os logs da aplicação via integração
+  # Custom Logs (Filestream). Sobe DEPOIS de criar a policy e o
+  # enrollment token no Kibana (ver README, passo 7).
+  log-agent:
+    image: docker.elastic.co/elastic-agent/elastic-agent:${STACK_VERSION}
+    container_name: log-agent-onp
+    profiles: ["agent"]
+    depends_on:
+      - fleet-server
+      - app-gerador
+    user: root
+    environment:
+      - FLEET_ENROLL=1
+      - FLEET_URL=http://fleet-server:8220
+      - FLEET_ENROLLMENT_TOKEN=${AGENT_ENROLLMENT_TOKEN}
+      - FLEET_INSECURE=true
+    volumes:
+      - app-logs:/var/log/app:ro
+    networks:
+      - onp-net
+
+volumes:
+  es-data:
+  app-logs:
+
+networks:
+  onp-net:
+    driver: bridge

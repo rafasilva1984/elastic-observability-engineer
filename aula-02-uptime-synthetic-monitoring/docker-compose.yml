@@ -1,0 +1,130 @@
+version: "3.8"
+
+# Projeto: observabilidade-na-pratica-elastic-synthetics-docker
+# Objetivo: subir Elasticsearch + Kibana + Fleet Server + um Elastic Agent
+# (Private Location) para criar monitores de Synthetic Monitoring (Uptime)
+# apontando para um site de exemplo, seguindo o fluxo oficial da Elastic
+# para monitoramento de recursos em redes privadas.
+#
+# Fonte oficial do fluxo: https://www.elastic.co/docs/solutions/observability/synthetics/monitor-resources-on-private-networks
+
+services:
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:${STACK_VERSION}
+    container_name: es-onp
+    environment:
+      - node.name=es-onp
+      - discovery.type=single-node
+      - cluster.name=onp-cluster
+      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD}
+      - xpack.security.enabled=true
+      - xpack.security.http.ssl.enabled=false
+      - xpack.license.self_generated.type=trial
+      - "ES_JAVA_OPTS=-Xms1g -Xmx1g"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    ports:
+      - "9200:9200"
+    volumes:
+      - es-data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s -u elastic:${ELASTIC_PASSWORD} http://localhost:9200/_cluster/health | grep -q '\"status\":\"green\"\\|\"status\":\"yellow\"'"]
+      interval: 10s
+      timeout: 10s
+      retries: 20
+    networks:
+      - onp-net
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:${STACK_VERSION}
+    container_name: kb-onp
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    environment:
+      - SERVER_NAME=kibana-onp
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - ELASTICSEARCH_USERNAME=kibana_system
+      - ELASTICSEARCH_PASSWORD=${KIBANA_PASSWORD}
+      # Necessário para o Fleet Server se conectar corretamente via Kibana
+      - XPACK_FLEET_AGENTS_ELASTICSEARCH_HOST=http://elasticsearch:9200
+    ports:
+      - "5601:5601"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:5601/api/status | grep -q '\"level\":\"available\"'"]
+      interval: 10s
+      timeout: 10s
+      retries: 30
+    networks:
+      - onp-net
+
+  # Site de exemplo que os monitores de Synthetics vão checar
+  app-exemplo:
+    image: nginx:1.27-alpine
+    container_name: app-exemplo-onp
+    volumes:
+      - ./examples/site-exemplo:/usr/share/nginx/html:ro
+    ports:
+      - "8080:80"
+    networks:
+      - onp-net
+
+  # Fleet Server: obrigatório em ambiente self-managed (fora do Elastic Cloud)
+  # para que agentes possam se conectar via Fleet.
+  # Requer um service token gerado previamente (ver README, passo 6).
+  fleet-server:
+    image: docker.elastic.co/elastic-agent/elastic-agent-complete:${STACK_VERSION}
+    container_name: fleet-server-onp
+    depends_on:
+      kibana:
+        condition: service_healthy
+    user: root
+    environment:
+      - FLEET_SERVER_ENABLE=true
+      - FLEET_SERVER_ELASTICSEARCH_HOST=http://elasticsearch:9200
+      - FLEET_SERVER_SERVICE_TOKEN=${FLEET_SERVER_SERVICE_TOKEN}
+      - FLEET_SERVER_POLICY_ID=fleet-server-policy
+      - FLEET_INSECURE=true
+      - KIBANA_FLEET_SETUP=true
+      - KIBANA_HOST=http://kibana:5601
+      - KIBANA_FLEET_USERNAME=elastic
+      - KIBANA_FLEET_PASSWORD=${ELASTIC_PASSWORD}
+    ports:
+      - "8220:8220"
+    cap_add:
+      - NET_RAW
+      - SETUID
+    networks:
+      - onp-net
+
+  # Elastic Agent que vai atuar como Private Location dos monitores de
+  # Synthetics. Só sobe DEPOIS que você criar a policy e o enrollment
+  # token no Kibana (ver README, passo 7). Por isso ele começa desligado
+  # (profile "synthetics") e é subido manualmente.
+  synthetics-agent:
+    image: docker.elastic.co/elastic-agent/elastic-agent-complete:${STACK_VERSION}
+    container_name: synthetics-agent-onp
+    profiles: ["synthetics"]
+    depends_on:
+      - fleet-server
+    user: root
+    environment:
+      - FLEET_ENROLL=1
+      - FLEET_URL=http://fleet-server:8220
+      - FLEET_ENROLLMENT_TOKEN=${SYNTHETICS_ENROLLMENT_TOKEN}
+      - FLEET_INSECURE=true
+    cap_add:
+      - NET_RAW
+      - SETUID
+    networks:
+      - onp-net
+
+volumes:
+  es-data:
+
+networks:
+  onp-net:
+    driver: bridge
