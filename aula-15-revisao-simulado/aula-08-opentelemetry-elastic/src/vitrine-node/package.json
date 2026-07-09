@@ -1,0 +1,9 @@
+{
+  "name": "vitrine",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "express": "^4.21.2",
+    "@opentelemetry/auto-instrumentations-node": "^0.55.0"
+  }
+}

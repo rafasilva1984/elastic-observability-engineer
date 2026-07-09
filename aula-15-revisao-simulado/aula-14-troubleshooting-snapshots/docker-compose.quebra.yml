@@ -1,0 +1,7 @@
+# Override da FALHA PROPOSITAL (Parte A do lab): sobe o serviço pagamento
+# com um secret token errado — simulando a rotação de credencial que
+# quebra a telemetria em silêncio. Aplicado por scripts/simular-falha.sh.
+services:
+  pagamento:
+    environment:
+      - ELASTIC_APM_SECRET_TOKEN=token-rotacionado-errado

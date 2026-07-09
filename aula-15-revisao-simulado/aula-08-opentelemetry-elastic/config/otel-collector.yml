@@ -1,0 +1,52 @@
+# OpenTelemetry Collector (contrib) - Aula 7
+# Anatomia: receivers -> processors -> exporters, ligados em pipelines.
+#
+# Fontes oficiais:
+# - Estrutura de config: https://opentelemetry.io/docs/collector/configuration/
+# - Exporter para Elastic (otlp/elastic + Bearer token) e processors
+#   recomendados (batch, memory_limiter):
+#   https://www.elastic.co/docs/solutions/observability/apm/opentelemetry/upstream-opentelemetry-collectors-language-sdks
+
+receivers:
+  # Porta de entrada OTLP: gRPC (4317) e HTTP (4318).
+  # No lab: o serviço Python envia via gRPC; o Node, via HTTP.
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  # Recomendados pela doc oficial da Elastic:
+  memory_limiter:
+    check_interval: 1s
+    limit_mib: 200
+  batch: {}
+
+exporters:
+  # Exporter de debug: imprime no log do Collector (troubleshooting).
+  debug:
+    verbosity: basic
+
+  # OTLP para o APM Server (que suporta OTLP nativamente).
+  # "otlp/elastic" é só um NOME de instância (formato tipo/nome) — não é
+  # um exporter especial da Elastic.
+  otlp/elastic:
+    endpoint: "fleet-server:8200"
+    tls:
+      insecure: true   # lab sem TLS; em produção, use TLS
+    headers:
+      # Secret token do APM (o mesmo configurado na integração no Kibana)
+      Authorization: "Bearer ${env:APM_SECRET_TOKEN}"
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [debug, otlp/elastic]
+    metrics:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [debug, otlp/elastic]

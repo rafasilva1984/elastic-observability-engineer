@@ -45,6 +45,7 @@ services:
     environment:
       - SERVER_NAME=kibana-onp
       - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - XPACK_ENCRYPTEDSAVEDOBJECTS_ENCRYPTIONKEY=onp_chave_fixa_de_32_caracteres_min_2026
       - ELASTICSEARCH_USERNAME=kibana_system
       - ELASTICSEARCH_PASSWORD=${KIBANA_PASSWORD}
       - XPACK_FLEET_AGENTS_ELASTICSEARCH_HOST=http://elasticsearch:9200
