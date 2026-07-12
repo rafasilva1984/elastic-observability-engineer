@@ -106,6 +106,22 @@ Em seguida, suba o Fleet Server:
 docker compose up -d fleet-server
 ```
 
+## 6.1 Suba o gerador de logs (ANTES do agente!)
+
+O agente só coleta o que já existe. Suba primeiro a aplicação que ESCREVE
+os logs — sem isso o Filestream escaneia e não encontra nada (`count: 0`):
+
+```bash
+docker compose up -d app-gerador
+docker compose logs app-gerador | tail -3   # "Gerador iniciado. Escrevendo em /var/log/app/app.log"
+```
+
+Confira que o arquivo nasceu:
+
+```bash
+docker compose exec app-gerador tail -3 /var/log/app/app.log
+```
+
 ## 7. Como criar a policy de logs e enrolar o agente
 
 No Kibana (http://localhost:5601):
@@ -181,6 +197,10 @@ O `-v` apaga `es-data` e `app-logs`. Use sem `-v` para manter os dados.
 
 ## 13. Troubleshooting
 
+- **Windows/Git Bash: caminhos viram `C:/Program Files/Git/...`**: o Git Bash
+  converte paths absolutos. Prefixe os comandos com `MSYS_NO_PATHCONV=1`
+  (ex.: `MSYS_NO_PATHCONV=1 docker exec <container> ls /var/log/app/`) ou use
+  barra dupla (`//var/log/app/`).
 - **Agente Healthy mas nada no Discover**: confira o **Log file path** na
   integração (`/var/log/app/app.log`) e se o volume `app-logs` está montado
   no `log-agent` (está, por padrão, neste compose). Confira também o time
