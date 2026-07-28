@@ -1,68 +1,126 @@
-# 🎓 Elastic Certified Observability Engineer — Curso Completo em Português
+# 🎓 Elastic Certified Observability Engineer — curso completo em português
 
 ![Elastic Stack](https://img.shields.io/badge/Elastic%20Stack-9.4.3-005571?logo=elastic)
 ![Docker](https://img.shields.io/badge/Docker-Compose%20v2-2496ED?logo=docker)
-![Idioma](https://img.shields.io/badge/idioma-PT--BR-green)
+![Estrutura](https://img.shields.io/badge/estrutura-7%20m%C3%B3dulos%20%C2%B7%2020%20li%C3%A7%C3%B5es-E5A82E)
 ![Licença](https://img.shields.io/badge/licen%C3%A7a-MIT-blue)
 
 Curso **gratuito e hands-on** de preparação para o exame **Elastic Certified
 Observability Engineer**, do canal
 [**Observabilidade na Prática**](https://www.youtube.com/@ObservabilidadeNaPratica).
 
-**15 aulas · 19/19 módulos do lab oficial cobertos · 100% replicável com Docker.**
-Cada aula tem lab completo, desafios no formato oficial do exame (guiado +
-autônomo com validação por estado final) e fontes oficiais da Elastic.
+Estruturado **exatamente no molde do curso oficial da Elastic**: 7 módulos,
+20 lições numeradas `N.M`, e cada lição fechando com **Summary + Quiz** e um
+**Lab** com o mesmo número — mais 4 bônus que vão além do exame.
 
-## 📚 Grade do curso
+## ⚡ Comece por aqui
 
-| # | Aula | Módulos EOE | Vídeo |
-|---|------|-------------|-------|
-| 01 | [Introdução ao Kibana](./aula-01-introducao-ao-kibana/) | EOE 1.1 · 1.3 | _em breve_ |
-| 02 | [Uptime e Synthetic Monitoring](./aula-02-uptime-synthetic-monitoring/) | EOE 1.2 | _em breve_ |
-| 03 | [Logs com Elastic Observability](./aula-03-logs-elastic-observability/) | EOE 2.1 · 2.2 | _em breve_ |
-| 04 | [Metrics e Infraestrutura](./aula-04-metrics-infraestrutura/) | EOE 2.3 | _em breve_ |
-| 05 | [Monitorando Kubernetes com Elastic Agent](./aula-05-kubernetes-elastic-agent/) | EOE 2.x aplicado | _em breve_ |
-| 06 | [Ingest Pipelines](./aula-06-ingest-pipelines/) | EOE 4.1 · 4.2 · 4.3 | _em breve_ |
-| 07 | [APM com Elastic](./aula-07-apm-com-elastic/) | EOE 3.1 | _em breve_ |
-| 08 | [OpenTelemetry com Elastic](./aula-08-opentelemetry-elastic/) | EOE 3.2 | _em breve_ |
-| 09 | [ILM para Dados de Observabilidade](./aula-09-ilm-observability/) | EOE 7.1 · 7.2 | _em breve_ |
-| 10 | [Hello Dashboard](./aula-10-hello-dashboard/) | EOE 6.1 | _em breve_ |
-| 11 | [Visualizações com Lens](./aula-11-lens-visualizacoes/) | EOE 6.2 | _em breve_ |
-| 12 | [Dashboards Interativos](./aula-12-dashboards-interativos/) | EOE 6.1 avançado | _em breve_ |
-| 13 | [Machine Learning e Alerting](./aula-13-ml-alerting/) | EOE 5.1 · 5.2 · 5.3 | _em breve_ |
-| 14 | [APM Troubleshooting e Searchable Snapshots](./aula-14-troubleshooting-snapshots/) | EOE 3.3 · 7.3 | _em breve_ |
-| 15 | [Revisão Geral + Simulado](./aula-15-revisao-simulado/) | todos os domínios | _em breve_ |
-
-## 🚀 Como usar
+O ambiente sobe **uma vez** e serve o curso inteiro. Você não monta
+infraestrutura em cada aula: o foco de cada lab é o **exercício sobre o tema**.
 
 ```bash
 git clone https://github.com/rafasilva1984/elastic-observability-engineer.git
-cd elastic-observability-engineer/aula-01-introducao-ao-kibana
-cat README.md   # cada aula tem passo a passo completo (14 seções)
+cd elastic-observability-engineer/plataforma
+./scripts/subir.sh
 ```
 
-Fluxo de toda aula: `cp .env.example .env` → subir com Docker Compose →
-seguir o roteiro em `docs/` → fazer o `docs/DESAFIO.md` → validar.
+Em ~5 minutos: Elasticsearch, Kibana, Fleet Server com APM, um agente
+enrolado, a loja de demonstração (web + API + pagamento), geradores de log
+e tráfego, e dados de exemplo indexados. Um comando, zero ajuste manual.
+
+👉 Detalhes e solução de problemas: **[plataforma/README.md](./plataforma/README.md)**
+
+## 📚 Grade
+
+### Módulo 1 — Getting Started
+
+| Lição | Tema | Lab | Vídeo |
+|---|---|---|---|
+| **1.1** | [Elastic Observability](./modulo-1-getting-started/licao-1.1-elastic-observability/) | [Lab](modulo-1-getting-started/licao-1.1-elastic-observability/LAB.md) | _em breve_ |
+| **1.2** | [Uptime](./modulo-1-getting-started/licao-1.2-uptime/) | [Lab](modulo-1-getting-started/licao-1.2-uptime/LAB.md) | _em breve_ |
+| **1.3** | [Discover](./modulo-1-getting-started/licao-1.3-discover/) | [Lab](modulo-1-getting-started/licao-1.3-discover/LAB.md) | _em breve_ |
+
+### Módulo 2 — Logs and metrics monitoring
+
+| Lição | Tema | Lab | Vídeo |
+|---|---|---|---|
+| **2.1** | [Elastic Agent](./modulo-2-logs-e-metricas/licao-2.1-elastic-agent/) | [Lab](modulo-2-logs-e-metricas/licao-2.1-elastic-agent/LAB.md) | _em breve_ |
+| **2.2** | [Logs Monitoring](./modulo-2-logs-e-metricas/licao-2.2-logs-monitoring/) | [Lab](modulo-2-logs-e-metricas/licao-2.2-logs-monitoring/LAB.md) | _em breve_ |
+| **2.3** | [Metrics Monitoring](./modulo-2-logs-e-metricas/licao-2.3-metrics-monitoring/) | [Lab](modulo-2-logs-e-metricas/licao-2.3-metrics-monitoring/LAB.md) | _em breve_ |
+
+### Módulo 3 — Applications monitoring
+
+| Lição | Tema | Lab | Vídeo |
+|---|---|---|---|
+| **3.1** | [Applications (APM)](./modulo-3-monitoracao-de-aplicacoes/licao-3.1-applications-apm/) | [Lab](modulo-3-monitoracao-de-aplicacoes/licao-3.1-applications-apm/LAB.md) | _em breve_ |
+| **3.2** | [Collect application data](./modulo-3-monitoracao-de-aplicacoes/licao-3.2-coletar-dados-de-aplicacao/) | [Lab](modulo-3-monitoracao-de-aplicacoes/licao-3.2-coletar-dados-de-aplicacao/LAB.md) | _em breve_ |
+| **3.3** | [APM Troubleshooting](./modulo-3-monitoracao-de-aplicacoes/licao-3.3-apm-troubleshooting/) | [Lab](modulo-3-monitoracao-de-aplicacoes/licao-3.3-apm-troubleshooting/LAB.md) | _em breve_ |
+
+### Módulo 4 — Structuring and processing data
+
+| Lição | Tema | Lab | Vídeo |
+|---|---|---|---|
+| **4.1** | [Pipelines](./modulo-4-estruturando-e-processando/licao-4.1-pipelines/) | [Lab](modulo-4-estruturando-e-processando/licao-4.1-pipelines/LAB.md) | _em breve_ |
+| **4.2** | [Extracting & Transforming events](./modulo-4-estruturando-e-processando/licao-4.2-extraindo-e-transformando/) | [Lab](modulo-4-estruturando-e-processando/licao-4.2-extraindo-e-transformando/LAB.md) | _em breve_ |
+| **4.3** | [Loading events](./modulo-4-estruturando-e-processando/licao-4.3-carregando-eventos/) | [Lab](modulo-4-estruturando-e-processando/licao-4.3-carregando-eventos/LAB.md) | _em breve_ |
+
+### Módulo 5 — Actionable observability data
+
+| Lição | Tema | Lab | Vídeo |
+|---|---|---|---|
+| **5.1** | [Machine Learning](./modulo-5-dados-acionaveis/licao-5.1-machine-learning/) | [Lab](modulo-5-dados-acionaveis/licao-5.1-machine-learning/LAB.md) | _em breve_ |
+| **5.2** | [Custom ML jobs](./modulo-5-dados-acionaveis/licao-5.2-custom-ml-jobs/) | [Lab](modulo-5-dados-acionaveis/licao-5.2-custom-ml-jobs/LAB.md) | _em breve_ |
+| **5.3** | [Alerting](./modulo-5-dados-acionaveis/licao-5.3-alerting/) | [Lab](modulo-5-dados-acionaveis/licao-5.3-alerting/LAB.md) | _em breve_ |
+
+### Módulo 6 — Visualizing observability data
+
+| Lição | Tema | Lab | Vídeo |
+|---|---|---|---|
+| **6.1** | [Dashboards](./modulo-6-visualizando/licao-6.1-dashboards/) | [Lab](modulo-6-visualizando/licao-6.1-dashboards/LAB.md) | _em breve_ |
+| **6.2** | [Custom visualizations](./modulo-6-visualizando/licao-6.2-visualizacoes-customizadas/) | [Lab](modulo-6-visualizando/licao-6.2-visualizacoes-customizadas/LAB.md) | _em breve_ |
+
+### Módulo 7 — Managing observability data
+
+| Lição | Tema | Lab | Vídeo |
+|---|---|---|---|
+| **7.1** | [Data streams](./modulo-7-gerenciando-dados/licao-7.1-data-streams/) | [Lab](modulo-7-gerenciando-dados/licao-7.1-data-streams/LAB.md) | _em breve_ |
+| **7.2** | [Index Lifecycle Management](./modulo-7-gerenciando-dados/licao-7.2-index-lifecycle-management/) | [Lab](modulo-7-gerenciando-dados/licao-7.2-index-lifecycle-management/LAB.md) | _em breve_ |
+| **7.3** | [Searchable snapshots](./modulo-7-gerenciando-dados/licao-7.3-searchable-snapshots/) | [Lab](modulo-7-gerenciando-dados/licao-7.3-searchable-snapshots/LAB.md) | _em breve_ |
+
+### Bônus — além do exame
+
+| Lição | Tema | Lab | Vídeo |
+|---|---|---|---|
+| **A** | [Kubernetes com Elastic Agent](./bonus/licao-A-kubernetes-elastic-agent/) | [Lab](bonus/licao-A-kubernetes-elastic-agent/LAB.md) | _em breve_ |
+| **B** | [Dashboards interativos](./bonus/licao-B-dashboards-interativos/) | [Lab](bonus/licao-B-dashboards-interativos/LAB.md) | _em breve_ |
+| **C** | [Revisão geral dos 7 módulos](./bonus/licao-C-revisao-geral/) | [Lab](bonus/licao-C-revisao-geral/LAB.md) | _em breve_ |
+| **D** | [Simulado final](./bonus/licao-D-simulado-final/) | [Lab](bonus/licao-D-simulado-final/LAB.md) | _em breve_ |
+
+## 🧭 Como cada lição funciona
+
+Igual ao curso oficial:
+
+1. **README.md** — objetivo e tópicos da lição
+2. **LAB.md** — 🟢 parte guiada (exercícios) + 🔒 desafio autônomo
+3. **SUMMARY.md** — pontos-chave + quiz de 3 perguntas
+
+Os labs assumem a plataforma no ar e a **documentação oficial liberada** —
+exatamente como na prova, que é *performance-based* e corrige pelo **estado
+final** do cluster.
 
 ## ✅ Pré-requisitos
 
-- Docker Engine 24+ com Compose v2
-- 4–6 GB de RAM livres (varia por aula; ver README de cada uma)
-- `sudo sysctl -w vm.max_map_count=262144` (requisito do Elasticsearch)
+- Docker Engine 24+ com Compose v2 · 6 GB de RAM livres
+- Portas 5601, 9200, 8220, 8200, 8080, 5000
+- Linux/WSL: `sudo sysctl -w vm.max_map_count=262144`
+- Windows/Git Bash: `export MSYS_NO_PATHCONV=1` (uma vez por sessão)
 
-## 🔐 Importante
+## 🔐 Segurança
 
-Os arquivos `.env` contêm senhas e tokens locais e estão no `.gitignore` —
-**use sempre o `.env.example` como base e nunca versione o seu `.env`.**
-
-## 🏁 Preparação final
-
-A [Aula 15](./aula-15-revisao-simulado/) traz o **simulado completo**: 12
-tarefas cronometradas (110 min) no formato performance-based do exame, com
-gabarito comentado e reset para repetir. Recomendação: marque a prova com
-**≥ 90/120 em duas rodadas seguidas**.
+As senhas do `.env` são **descartáveis, de laboratório**. O arquivo está no
+`.gitignore` — nunca versione o seu.
 
 ## 📄 Licença
 
-MIT — use, estude, compartilhe. Se este material te ajudou, ⭐ o repositório
-e se inscreva no canal: é o que mantém o projeto vivo.
+MIT — use, estude, compartilhe. Se ajudou, ⭐ o repositório e se inscreva no
+canal: é o que mantém o projeto vivo.

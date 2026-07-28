@@ -1,0 +1,158 @@
+# Plataforma única do curso "Observabilidade na Prática"
+# Preparação para o exame Elastic Certified Observability Engineer.
+#
+# Sobe UMA vez e serve TODAS as lições. Não edite nada à mão:
+#   ./scripts/subir.sh   faz a orquestração completa (senhas, tokens,
+#                        Fleet, output, integrações, dados de exemplo).
+#
+# Notas de compatibilidade 9.x já aplicadas aqui:
+#  - xpack.encryptedSavedObjects.encryptionKey no Kibana (sem isso o Fleet
+#    não inicializa: "Agent binary source needs encrypted saved object api key")
+#  - agentes usam FLEET_URL https:// + FLEET_INSECURE (o Fleet Server fala
+#    TLS mesmo em lab; http:// puro causa "TLS handshake error")
+#  - sem a chave 'version:' (obsoleta no Compose v2)
+
+services:
+  # ---------------------------------------------------------------- base
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:${STACK_VERSION}
+    container_name: es-onp
+    environment:
+      - node.name=es-onp
+      - cluster.name=onp-cluster
+      - discovery.type=single-node
+      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD}
+      - xpack.security.enabled=true
+      - xpack.security.http.ssl.enabled=false
+      - xpack.license.self_generated.type=trial
+      - path.repo=/snapshots
+      - "ES_JAVA_OPTS=-Xms1g -Xmx1g"
+    ulimits:
+      memlock: { soft: -1, hard: -1 }
+    ports: ["9200:9200"]
+    volumes:
+      - es-data:/usr/share/elasticsearch/data
+      - snapshots:/snapshots
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s -u elastic:${ELASTIC_PASSWORD} http://localhost:9200/_cluster/health | grep -q '\"status\":\"green\"\\|\"status\":\"yellow\"'"]
+      interval: 10s
+      timeout: 10s
+      retries: 30
+    networks: [onp-net]
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:${STACK_VERSION}
+    container_name: kb-onp
+    depends_on:
+      elasticsearch: { condition: service_healthy }
+    environment:
+      - SERVER_NAME=kibana-onp
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - ELASTICSEARCH_USERNAME=kibana_system
+      - ELASTICSEARCH_PASSWORD=${KIBANA_PASSWORD}
+      - XPACK_ENCRYPTEDSAVEDOBJECTS_ENCRYPTIONKEY=onp_chave_de_32_caracteres_no_minimo_2026
+      - XPACK_FLEET_AGENTS_ELASTICSEARCH_HOST=http://elasticsearch:9200
+    ports: ["5601:5601"]
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:5601/api/status | grep -q '\"level\":\"available\"'"]
+      interval: 10s
+      timeout: 10s
+      retries: 40
+    networks: [onp-net]
+
+  fleet-server:
+    image: docker.elastic.co/elastic-agent/elastic-agent:${STACK_VERSION}
+    container_name: fleet-server-onp
+    depends_on:
+      kibana: { condition: service_healthy }
+    environment:
+      - FLEET_SERVER_ENABLE=true
+      - FLEET_SERVER_ELASTICSEARCH_HOST=http://elasticsearch:9200
+      - FLEET_SERVER_SERVICE_TOKEN=${FLEET_SERVER_SERVICE_TOKEN}
+      - FLEET_SERVER_POLICY_ID=fleet-server-policy
+      - FLEET_URL=https://fleet-server:8220
+      - FLEET_INSECURE=true
+      - KIBANA_FLEET_SETUP=true
+      - KIBANA_HOST=http://kibana:5601
+      - KIBANA_FLEET_USERNAME=elastic
+      - KIBANA_FLEET_PASSWORD=${ELASTIC_PASSWORD}
+    ports:
+      - "8220:8220"
+      - "8200:8200"
+    networks: [onp-net]
+
+  # ------------------------------------------------- alvos de observação
+  # Loja de demonstração: gera logs, métricas, traces e um alvo de uptime.
+  loja-web:
+    image: nginx:1.27-alpine
+    container_name: loja-web-onp
+    volumes:
+      - ./apps/loja-web:/usr/share/nginx/html:ro
+    ports: ["8080:80"]
+    networks: [onp-net]
+
+  loja-api:
+    build: ./apps/loja-api
+    container_name: loja-api-onp
+    environment:
+      - ELASTIC_APM_SERVICE_NAME=loja-api
+      - ELASTIC_APM_SERVER_URL=http://fleet-server:8200
+      - ELASTIC_APM_SECRET_TOKEN=${APM_SECRET_TOKEN}
+      - ELASTIC_APM_ENVIRONMENT=lab
+      - PAGAMENTO_URL=http://pagamento:5001
+    ports: ["5000:5000"]
+    depends_on: [pagamento]
+    networks: [onp-net]
+
+  pagamento:
+    build: ./apps/pagamento
+    container_name: pagamento-onp
+    environment:
+      - ELASTIC_APM_SERVICE_NAME=pagamento
+      - ELASTIC_APM_SERVER_URL=http://fleet-server:8200
+      - ELASTIC_APM_SECRET_TOKEN=${APM_SECRET_TOKEN}
+      - ELASTIC_APM_ENVIRONMENT=lab
+    networks: [onp-net]
+
+  gerador-logs:
+    image: alpine:3.20
+    container_name: gerador-logs-onp
+    command: ["sh", "/gerador/gerar-logs.sh"]
+    volumes:
+      - ./apps/gerador:/gerador:ro
+      - app-logs:/var/log/app
+    networks: [onp-net]
+
+  gerador-trafego:
+    image: alpine:3.20
+    container_name: gerador-trafego-onp
+    command: ["sh", "/gerador/gerar-trafego.sh"]
+    volumes:
+      - ./apps/gerador:/gerador:ro
+    depends_on: [loja-api]
+    networks: [onp-net]
+
+  # --------------------------------------------------- agente (perfil)
+  # Sobe só depois que a policy existe. ./scripts/subir.sh cuida disso.
+  agente-host:
+    image: docker.elastic.co/elastic-agent/elastic-agent:${STACK_VERSION}
+    container_name: agente-host-onp
+    hostname: agente-host-onp
+    profiles: ["agente"]
+    environment:
+      - FLEET_ENROLL=1
+      - FLEET_URL=https://fleet-server:8220
+      - FLEET_ENROLLMENT_TOKEN=${AGENT_ENROLLMENT_TOKEN}
+      - FLEET_INSECURE=true
+    volumes:
+      - app-logs:/var/log/app:ro
+    networks: [onp-net]
+
+volumes:
+  es-data:
+  snapshots:
+  app-logs:
+
+networks:
+  onp-net:
+    driver: bridge
