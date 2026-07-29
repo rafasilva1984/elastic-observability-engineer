@@ -5,11 +5,31 @@
 # endpoint é uma API interna e recusa chamadas externas
 # ("not available with the current configuration"). Indexar direto no
 # Elasticsearch não tem essa limitação e ainda é mais didático.
+#
+# IDEMPOTÊNCIA: o subir.sh pode ser rodado várias vezes. Sem a trava abaixo,
+# cada execução somaria mais 720 documentos ao índice e os gráficos das lições
+# ficariam com volume errado. Para reindexar do zero: ./carregar-dados.sh --forcar
 set -uo pipefail
 cd "$(dirname "$0")/.." || exit 1
 set -a; . ./.env; set +a
 ES="http://localhost:9200"; AUTH="elastic:${ELASTIC_PASSWORD}"
 INDEX="onp-web-logs"
+FORCAR="${1:-}"
+
+# ------------------------------------------------------- trava de duplicação
+EXISTENTES=$(curl -s -u "$AUTH" "$ES/${INDEX}/_count" 2>/dev/null \
+  | grep -o '"count":[0-9]*' | head -1 | cut -d: -f2)
+EXISTENTES="${EXISTENTES:-0}"
+
+if [ "$FORCAR" = "--forcar" ]; then
+  echo "==> --forcar: apagando o índice ${INDEX} antes de recriar"
+  curl -s -u "$AUTH" -X DELETE "$ES/${INDEX}" -o /dev/null
+  EXISTENTES=0
+elif [ "$EXISTENTES" -ge 700 ] 2>/dev/null; then
+  echo "==> ${INDEX} já tem ${EXISTENTES} documentos — nada a fazer."
+  echo "    Para reindexar do zero: ./scripts/carregar-dados.sh --forcar"
+  exit 0
+fi
 
 echo "==> Criando o índice ${INDEX}"
 curl -s -u "$AUTH" -X PUT "$ES/${INDEX}" -H 'Content-Type: application/json' -d '{
