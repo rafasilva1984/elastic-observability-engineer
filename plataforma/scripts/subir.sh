@@ -75,33 +75,34 @@ json_valor() {
 }
 
 # ---------------------------------------------------------------------------
-#  req <METODO> <url> [json]
+#  req <METODO> <url> [json]   ->  preenche as globais $HTTP e $CORPO
 #
-#  Preenche DUAS globais:  $HTTP  (código HTTP)  e  $CORPO  (corpo da resposta)
+#  DUAS armadilhas já evitadas aqui:
 #
-#  ATENÇÃO — chame SEMPRE como comando simples:
-#        req GET "$url"          e use $HTTP / $CORPO
-#  NUNCA assim:
-#        codigo=$(req GET "$url")
-#  Command substitution roda em SUBSHELL: o $CORPO setado lá dentro morre com
-#  o subshell e o shell pai recebe string vazia. Foi exatamente esse bug que
-#  fez o passo do APM falhar reportando "HTTP 200" com corpo vazio.
+#  1. NÃO chame dentro de $( ). Command substitution roda em subshell e as
+#     globais setadas lá dentro morrem com ele — o shell pai recebe vazio.
+#
+#  2. NÃO use arquivo temporário (curl -o "$tmp" + cat "$tmp"). No Git Bash
+#     com MSYS_NO_PATHCONV=1 — ou quando o curl do PATH é o nativo do Windows
+#     — o caminho /tmp/... não é convertido: o curl grava em C:\tmp\... e o
+#     cat lê outro lugar. Resultado: HTTP 200 com corpo vazio.
+#
+#  Solução: o %{http_code} vem colado no fim do corpo, na última linha.
+#  Sem arquivo intermediário, sem conversão de caminho, sem subshell perdido.
 # ---------------------------------------------------------------------------
 HTTP=""
 CORPO=""
 req() {
-  local metodo="$1" url="$2" dados="${3:-}" tmp
-  tmp=$(mktemp)
+  local metodo="$1" url="$2" dados="${3:-}" saida
   if [ -n "$dados" ]; then
-    HTTP=$(curl -s -u "$AUTH" -X "$metodo" "$url" \
-      -H 'kbn-xsrf: true' -H 'Content-Type: application/json' \
-      -d "$dados" -o "$tmp" -w '%{http_code}')
+    saida=$(curl -s -u "$AUTH" -X "$metodo" "$url" -H 'kbn-xsrf: true' \
+      -H 'Content-Type: application/json' -d "$dados" -w $'\n%{http_code}')
   else
-    HTTP=$(curl -s -u "$AUTH" -X "$metodo" "$url" \
-      -H 'kbn-xsrf: true' -o "$tmp" -w '%{http_code}')
+    saida=$(curl -s -u "$AUTH" -X "$metodo" "$url" -H 'kbn-xsrf: true' \
+      -w $'\n%{http_code}')
   fi
-  CORPO=$(cat "$tmp")
-  rm -f "$tmp"
+  HTTP=$(printf '%s' "$saida" | tail -n 1)
+  CORPO=$(printf '%s' "$saida" | sed '$d')
 }
 
 # porta_aberta <url> -> 0 se algo respondeu HTTP (mesmo 401/403), 1 se não
@@ -109,6 +110,33 @@ porta_aberta() {
   local c
   c=$(curl -s -m 3 -o /dev/null -w '%{http_code}' "$1" 2>/dev/null)
   [ -n "$c" ] && [ "$c" != "000" ]
+}
+
+# extrai o primeiro objeto "vars":{...} de um JSON, com chaves balanceadas
+extrai_vars() {
+  awk '{ s = s $0 }
+  END {
+    p = index(s, "\"vars\":{")
+    if (p == 0) { exit 1 }
+    start = p + 7
+    depth = 0
+    for (i = start; i <= length(s); i++) {
+      c = substr(s, i, 1)
+      if (c == "{") depth++
+      else if (c == "}") { depth--; if (depth == 0) { print substr(s, start, i - start + 1); exit 0 } }
+    }
+    exit 1
+  }'
+}
+
+# remove package policies cujo nome comece com o prefixo dado; imprime quantas
+remove_pp() {
+  local prefixo="$1" ids i n=0
+  req GET "$KB/api/fleet/package_policies?perPage=200"
+  ids=$(printf '%s' "$CORPO" | tr '{' '\n' | grep "\"name\":\"${prefixo}" \
+        | grep -o '"id":"[^"]*"' | cut -d'"' -f4)
+  for i in $ids; do req DELETE "$KB/api/fleet/package_policies/$i"; n=$((n+1)); done
+  echo "$n"
 }
 
 espera() { # espera <descrição> <comando de teste> <tentativas>
@@ -138,7 +166,7 @@ req POST "$ES/_security/user/kibana_system/_password" "{\"password\":\"${KIBANA_
 if [ "$HTTP" = "200" ]; then
   ok "senha do kibana_system definida"
 else
-  erro "falha ao definir a senha (HTTP $HTTP): $(echo "$CORPO" | head -c 200)"
+  erro "falha ao definir a senha (HTTP $HTTP): $(printf '%s' "$CORPO" | head -c 200)"
   exit 1
 fi
 
@@ -168,13 +196,13 @@ else
   case "$HTTP" in
     200|201) ok "policy fleet-server-policy criada" ;;
     409)     ok "policy fleet-server-policy já existia" ;;
-    *)       erro "não criei a policy do Fleet Server (HTTP $HTTP): $(echo "$CORPO" | head -c 200)" ;;
+    *)       erro "não criei a policy do Fleet Server (HTTP $HTTP): $(printf '%s' "$CORPO" | head -c 200)" ;;
   esac
 fi
 
 # host do Fleet Server (sem ele: "Missing URL for Fleet Server host")
 req GET "$KB/api/fleet/fleet_server_hosts"
-if echo "$CORPO" | grep -q 'fleet-server:8220'; then
+if printf '%s' "$CORPO" | grep -q 'fleet-server:8220'; then
   ok "Fleet Server host já registrado"
 else
   req POST "$KB/api/fleet/fleet_server_hosts" \
@@ -182,7 +210,7 @@ else
   case "$HTTP" in
     200|201) ok "Fleet Server host registrado (https://fleet-server:8220)" ;;
     409)     ok "Fleet Server host já existia" ;;
-    *)       erro "não registrei o Fleet Server host (HTTP $HTTP): $(echo "$CORPO" | head -c 200)" ;;
+    *)       erro "não registrei o Fleet Server host (HTTP $HTTP): $(printf '%s' "$CORPO" | head -c 200)" ;;
   esac
 fi
 
@@ -191,8 +219,8 @@ fi
 # então na prática ele já nasce certo. Aqui a gente só CONFERE, e só tenta
 # corrigir se de fato estiver errado.
 req GET "$KB/api/fleet/outputs"
-if echo "$CORPO" | grep -q 'elasticsearch:9200'; then
-  if echo "$CORPO" | grep -q '"is_preconfigured":true'; then
+if printf '%s' "$CORPO" | grep -q 'elasticsearch:9200'; then
+  if printf '%s' "$CORPO" | grep -q '"is_preconfigured":true'; then
     ok "output aponta para http://elasticsearch:9200 (preconfigurado)"
   else
     ok "output aponta para http://elasticsearch:9200"
@@ -205,7 +233,7 @@ else
     ok "output corrigido para http://elasticsearch:9200"
   else
     erro "output continua errado (HTTP $HTTP). Os agentes vão descartar dados."
-    echo "        corpo: $(echo "$CORPO" | head -c 250)"
+    echo "        corpo: $(printf '%s' "$CORPO" | head -c 250)"
   fi
 fi
 
@@ -237,76 +265,147 @@ echo "        receber a policy. Some sozinho. Não é defeito."
 # ------------------------------------------------------------------- APM
 passo "7/9  Adicionando a integração APM (porta 8200)"
 
+# ---------------------------------------------------------------------------
+#  POR QUE ESTE PASSO É TÃO ELABORADO
+#
+#  Quando você manda `vars` explicitamente, o Fleet usa SÓ aquelas e NÃO
+#  preenche os padrões do pacote. Cada bloco opcional do apm-server que ficar
+#  sem sua flag renderiza com nulos e o APM Server recusa a config inteira:
+#
+#     faltou tls_enabled           -> "certificate file not configured
+#                                      accessing 'apm-server.ssl'"
+#     faltou tail_sampling_enabled -> "no policies specified accessing
+#                                      'apm-server.sampling.tail'"
+#
+#  O pacote tem dezenas de vars. Em vez de listá-las (e quebrar a cada versão
+#  nova da Elastic), perguntamos ao próprio Fleet quais são: criamos uma
+#  package policy descartável SEM `inputs` numa agent policy temporária sem
+#  agentes, lemos o conjunto completo de padrões, e trocamos só `host` e
+#  `secret_token`.
+#
+#  `host` tem de ser 0.0.0.0:8200 — o padrão localhost:8200 prende o processo
+#  no loopback do container, inalcançável pelo Docker e pelos outros serviços.
+# ---------------------------------------------------------------------------
+POLICY_TMP="onp-apm-template-tmp"
+
 req GET "$KB/api/fleet/package_policies?perPage=200"
-if echo "$CORPO" | grep -q '"name":"apm-onp"'; then
+if printf '%s' "$CORPO" | grep -q '"name":"apm-onp"'; then
   ok "integração APM já existe na policy"
 else
-  # (a) descobre qual versão do pacote apm este stack oferece.
-  #     Mandar "version":"" no package_policy devolve 400 e a porta 8200 fica
-  #     muda sem nenhum aviso. Foi esse o bug da v2.0.
+  # (a) versão do pacote
   req GET "$KB/api/fleet/epm/packages/apm"
-  APM_INFO="$CORPO"
-  APM_VER=$(echo "$APM_INFO" | grep -o '"latestVersion":"[^"]*"' | head -1 | cut -d'"' -f4)
-  # fallback: primeiro "version" que comece com DÍGITO — evita pegar
-  # restrições de compatibilidade do tipo "version":"^9.0.0"
-  [ -z "$APM_VER" ] && APM_VER=$(echo "$APM_INFO" | grep -o '"version":"[0-9][^"]*"' | head -1 | cut -d'"' -f4)
-
-  if [ -n "$APM_VER" ]; then
-    ok "pacote apm disponível na versão ${APM_VER}"
-    # (b) instala o pacote explicitamente
+  APM_VER=$(printf '%s' "$CORPO" | grep -o '"latestVersion":[[:space:]]*"[^"]*"' | head -1 | cut -d'"' -f4)
+  [ -z "$APM_VER" ] && APM_VER=$(printf '%s' "$CORPO" | grep -o '"version":[[:space:]]*"[0-9][^"]*"' | head -1 | cut -d'"' -f4)
+  if [ -z "$APM_VER" ]; then
+    erro "não descobri a versão do pacote apm (HTTP $HTTP)"
+    echo "        corpo: $(printf '%s' "$CORPO" | head -c 250)"
+  else
+    ok "pacote apm versão ${APM_VER}"
     req POST "$KB/api/fleet/epm/packages/apm/${APM_VER}" '{"force":true}'
     case "$HTTP" in
-      200|201) ok "pacote apm instalado" ;;
-      409)     ok "pacote apm já estava instalado" ;;
-      *)       aviso "instalação do pacote apm retornou HTTP $HTTP (seguindo mesmo assim)" ;;
+      200|201|409) ok "pacote instalado" ;;
+      *)           aviso "instalação retornou HTTP $HTTP (seguindo)" ;;
     esac
-    PKG="\"package\":{\"name\":\"apm\",\"version\":\"${APM_VER}\"}"
-  else
-    aviso "não consegui extrair a versão do pacote apm — vou deixar o Fleet resolver"
-    echo "        (se falhar, rode: ./scripts/diagnostico-apm.sh)"
-    PKG="\"package\":{\"name\":\"apm\"}"
-  fi
 
-  # (c) cria a package policy
-  req POST "$KB/api/fleet/package_policies" "{
-    \"name\":\"apm-onp\",
-    \"namespace\":\"default\",
-    \"policy_id\":\"fleet-server-policy\",
-    ${PKG},
-    \"inputs\":[{\"type\":\"apm\",\"enabled\":true,\"streams\":[],\"vars\":{
-      \"host\":{\"value\":\"0.0.0.0:8200\",\"type\":\"text\"},
-      \"secret_token\":{\"value\":\"${APM_SECRET_TOKEN}\",\"type\":\"text\"}}}]}"
-  case "$HTTP" in
-    200|201) ok "integração APM adicionada (0.0.0.0:8200 + secret token)" ;;
-    409)     ok "integração APM já existia" ;;
-    *)       erro "APM NÃO foi adicionado (HTTP $HTTP) — porta 8200 ficará muda"
-             echo "        corpo: $(echo "$CORPO" | head -c 400)"
-             echo "        diagnóstico: ./scripts/diagnostico-apm.sh" ;;
-  esac
+    # (b) lê os padrões numa policy temporária sem agentes
+    remove_pp "apm-tmp" > /dev/null
+    req POST "$KB/api/fleet/agent_policies/delete" "{\"agentPolicyId\":\"${POLICY_TMP}\"}"
+    req POST "$KB/api/fleet/agent_policies" \
+      "{\"id\":\"${POLICY_TMP}\",\"name\":\"ONP APM template (temporária)\",\"namespace\":\"default\"}"
+    req POST "$KB/api/fleet/package_policies" \
+      "{\"name\":\"apm-tmp\",\"namespace\":\"default\",\"policy_id\":\"${POLICY_TMP}\",
+        \"package\":{\"name\":\"apm\",\"version\":\"${APM_VER}\"}}"
+
+    APM_VARS=""
+    if [ "$HTTP" = "200" ] || [ "$HTTP" = "201" ]; then
+      APM_VARS=$(printf '%s' "$CORPO" | extrai_vars)
+    fi
+    remove_pp "apm-tmp" > /dev/null
+    req POST "$KB/api/fleet/agent_policies/delete" "{\"agentPolicyId\":\"${POLICY_TMP}\"}"
+
+    if [ -z "$APM_VARS" ] || ! printf '%s' "$APM_VARS" | grep -q '"host"'; then
+      erro "não consegui ler os padrões do pacote apm — pulando a integração"
+      echo "        rode depois: ./scripts/corrigir-apm.sh"
+    else
+      QTD=$(printf '%s' "$APM_VARS" | grep -o '"[a-z_]*":{' | wc -l | tr -d ' ')
+      ok "${QTD} variáveis lidas com os padrões do pacote"
+
+      # (c) sobrescreve só o que precisa
+      APM_VARS=$(printf '%s' "$APM_VARS" | sed 's|"host":{"value":"[^"]*"|"host":{"value":"0.0.0.0:8200"|')
+      if printf '%s' "$APM_VARS" | grep -q '"secret_token":{"value"'; then
+        APM_VARS=$(printf '%s' "$APM_VARS" | sed "s|\"secret_token\":{\"value\":\"[^\"]*\"|\"secret_token\":{\"value\":\"${APM_SECRET_TOKEN}\"|")
+      else
+        APM_VARS=$(printf '%s' "$APM_VARS" | sed "s|\"secret_token\":{|\"secret_token\":{\"value\":\"${APM_SECRET_TOKEN}\",|")
+      fi
+      printf '%s' "$APM_VARS" | grep -q '0\.0\.0\.0:8200' \
+        && ok "host = 0.0.0.0:8200" || aviso "não confirmei a troca do host"
+
+      # (d) cria a integração real
+      req POST "$KB/api/fleet/package_policies" \
+        "{\"name\":\"apm-onp\",\"namespace\":\"default\",\"policy_id\":\"fleet-server-policy\",
+          \"package\":{\"name\":\"apm\",\"version\":\"${APM_VER}\"},
+          \"inputs\":[{\"type\":\"apm\",\"policy_template\":\"apmserver\",\"enabled\":true,
+            \"streams\":[],\"vars\":${APM_VARS}}]}"
+      case "$HTTP" in
+        200|201) ok "integração APM criada" ;;
+        409)     ok "integração APM já existia" ;;
+        *)       erro "APM não foi adicionado (HTTP $HTTP): $(printf '%s' "$CORPO" | head -c 400)" ;;
+      esac
+    fi
+  fi
 fi
 
-# (d) confirma de verdade: a porta 8200 tem de responder ALGO (200 ou 401).
-#     'curl | grep -q .' não serve: com secret token o APM devolve corpo vazio.
-if espera "o APM Server abrir a porta 8200" "porta_aberta http://localhost:8200" 24; then
+# (e) confirma de verdade. 'curl | grep -q .' não serve: com secret token o
+#     APM devolve corpo vazio. O que vale é o código HTTP (401 ou 200).
+if espera "o APM Server abrir a porta 8200" "porta_aberta http://localhost:8200" 36; then
   ok "APM Server respondendo em http://localhost:8200"
 else
-  erro "porta 8200 não respondeu. As lições 3.1/3.2/3.3 não vão funcionar."
-  echo "        diagnóstico: ./scripts/diagnostico-apm.sh"
+  erro "porta 8200 não respondeu. Lições 3.1/3.2/3.3 não vão funcionar."
+  echo "        diagnóstico: ./scripts/corrigir-apm.sh"
 fi
 
-# ------------------------------------------------------- 3. agente + apps
 passo "8/9  Criando a policy do host e enrolando o agente"
+
+# ARMADILHA: POST /api/fleet/agent_policies cria a policy VAZIA. As
+# integrações System e Elastic Agent só entram com ?sys_monitoring=true.
+# Sem elas o agente enrola, fica Healthy e não coleta nada — metrics-system*
+# nunca aparece e a lição 2.3 não tem dado.
 req GET "$KB/api/fleet/agent_policies/onp-host-policy"
 if [ "$HTTP" != "200" ]; then
-  req POST "$KB/api/fleet/agent_policies" \
+  req POST "$KB/api/fleet/agent_policies?sys_monitoring=true" \
     '{"id":"onp-host-policy","name":"ONP - Host","namespace":"default","monitoring_enabled":["logs","metrics"]}'
   case "$HTTP" in
-    200|201) ok "policy ONP - Host criada (já nasce com a integração System)" ;;
+    200|201) ok "policy ONP - Host criada com System + Elastic Agent" ;;
     409)     ok "policy ONP - Host já existia" ;;
-    *)       erro "não criei a policy do host (HTTP $HTTP): $(echo "$CORPO" | head -c 200)" ;;
+    *)       erro "não criei a policy do host (HTTP $HTTP): $(printf '%s' "$CORPO" | head -c 250)" ;;
   esac
 else
   ok "policy ONP - Host já existe"
+fi
+
+# se a policy já existia mas nasceu vazia (versões anteriores deste script),
+# acrescenta o System agora
+req GET "$KB/api/fleet/agent_policies/onp-host-policy"
+if printf '%s' "$CORPO" | grep -q '"name":"system"'; then
+  ok "integração System presente na policy do host"
+else
+  aviso "policy do host sem integração System — acrescentando"
+  req GET "$KB/api/fleet/epm/packages/system"
+  SYS_VER=$(printf '%s' "$CORPO" | grep -o '"latestVersion":[[:space:]]*"[^"]*"' | head -1 | cut -d'"' -f4)
+  [ -z "$SYS_VER" ] && SYS_VER=$(printf '%s' "$CORPO" | grep -o '"version":[[:space:]]*"[0-9][^"]*"' | head -1 | cut -d'"' -f4)
+  if [ -n "$SYS_VER" ]; then
+    req POST "$KB/api/fleet/epm/packages/system/${SYS_VER}" '{"force":true}'
+    # sem `inputs`: o Fleet preenche todos os padrões (os do System servem)
+    req POST "$KB/api/fleet/package_policies" \
+      "{\"name\":\"system-onp\",\"namespace\":\"default\",\"policy_id\":\"onp-host-policy\",
+        \"package\":{\"name\":\"system\",\"version\":\"${SYS_VER}\"}}"
+    case "$HTTP" in
+      200|201|409) ok "integração System adicionada" ;;
+      *)           erro "não adicionei o System (HTTP $HTTP): $(printf '%s' "$CORPO" | head -c 250)" ;;
+    esac
+  else
+    erro "não descobri a versão do pacote system"
+  fi
 fi
 
 ENROLL=$(curl -s -u "$AUTH" "$KB/api/fleet/enrollment_api_keys?perPage=100" -H "kbn-xsrf: true" \
@@ -324,11 +423,37 @@ fi
 
 passo "9/9  Subindo as aplicações de demonstração e os dados de exemplo"
 $DC up -d loja-web pagamento loja-api gerador-logs gerador-trafego > /dev/null 2>&1
-ok "loja-web (:8080), loja-api (:5000), pagamento, geradores de log e tráfego"
-if ./scripts/carregar-dados.sh > /dev/null 2>&1; then
+
+# Verifica de verdade em vez de só declarar sucesso. Cada app é um alvo de
+# observação usado nas lições — se uma não subir, a lição correspondente fica
+# sem dado e o aluno descobre no meio da aula.
+sleep 5
+for svc in loja-web loja-api pagamento gerador-logs gerador-trafego; do
+  estado=$($DC ps --format '{{.Service}} {{.State}}' 2>/dev/null | grep "^${svc} " | awk '{print $2}')
+  case "$estado" in
+    running) ok "container ${svc}: running" ;;
+    "")      erro "container ${svc}: não existe. Veja: $DC ps -a" ;;
+    *)       erro "container ${svc}: ${estado}. Veja: $DC logs ${svc}" ;;
+  esac
+done
+
+# checagem de porta: container rodando não garante serviço respondendo
+for alvo in "loja-web http://localhost:8080" "loja-api http://localhost:5000/health"; do
+  nome=${alvo%% *}; url=${alvo#* }
+  if espera "$nome responder em ${url}" "porta_aberta ${url}" 12; then
+    ok "${nome} respondendo"
+  else
+    erro "${nome} não respondeu em ${url}"
+    echo "        $DC logs ${nome}"
+    echo "        se for 'port is already allocated', outro serviço ocupa a porta:"
+    echo "          Windows:  netstat -ano | findstr :${url##*:}"
+  fi
+done
+
+if ./scripts/carregar-dados.sh; then
   ok "dados de exemplo indexados"
 else
-  erro "falha ao carregar dados — rode ./scripts/carregar-dados.sh para ver o erro"
+  erro "falha ao carregar dados de exemplo"
 fi
 
 # ------------------------------------------------------------------ fim
