@@ -62,6 +62,9 @@ elif [ "$EXISTENTES" -gt 0 ] 2>/dev/null; then
   curl -s -u "$AUTH" -X DELETE "$ES/${INDEX}" -o /dev/null
 fi
 
+# `referrer` fica mapeado mas o gerador NUNCA a preenche, de propósito:
+# é o campo do desafio autônomo da Lição 1.3 (achar via Discover um campo
+# mapeado com 0% de preenchimento).
 echo "==> Criando o índice ${INDEX}"
 CODIGO=$(curl -s -u "$AUTH" -X PUT "$ES/${INDEX}" -H 'Content-Type: application/json' -d '{
   "mappings": { "properties": {
@@ -74,7 +77,8 @@ CODIGO=$(curl -s -u "$AUTH" -X PUT "$ES/${INDEX}" -H 'Content-Type: application/
     "geo":     { "properties": { "src": {"type":"keyword"}, "dest": {"type":"keyword"},
                                  "coordinates": {"type":"geo_point"} } },
     "machine": { "properties": { "os": {"type":"keyword"}, "ram": {"type":"long"} } },
-    "user_agent": { "properties": { "original": {"type":"keyword"} } }
+    "user_agent": { "properties": { "original": {"type":"keyword"} } },
+    "referrer": { "type": "keyword" }
   }}}' -o /dev/null -w '%{http_code}')
 echo "   índice: HTTP ${CODIGO}"
 if [ "$CODIGO" != "200" ] && [ "$CODIGO" != "201" ]; then

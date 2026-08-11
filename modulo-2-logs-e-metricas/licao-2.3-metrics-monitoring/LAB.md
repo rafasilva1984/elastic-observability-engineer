@@ -26,15 +26,23 @@ Abra **Observability > Hosts**. Compare CPU, memória, disco e rede. Ordene por 
 
 ### Exercício 3 — Provocar carga
 
-Gere CPU dentro do host monitorado:
+`system.cpu.total.norm.pct` é normalizado pelo número de cores lógicos do host — cada loop
+abaixo satura **um** core inteiro. Descubra quantos cores sua máquina expõe ao container:
+
+```bash
+docker exec agente-host-onp nproc
+```
+
+Depois rode o comando de carga **um loop por core, deixando 1-2 cores de folga** (ex.: numa
+máquina de 8 cores, rode 6-7 vezes; numa de 16, rode 13-14 vezes) — com só "duas vezes" numa
+máquina de muitos cores a CPU normalizada mal sai do lugar:
 
 ```bash
 docker exec -d agente-host-onp sh -c 'end=$(( $(date +%s) + 180 )); while [ $(date +%s) -lt $end ]; do :; done'
 ```
 
-Rode o comando duas vezes (dois loops) e volte ao Inventory.
-
-**Como validar:** Em ~1 min o quadrado do host esquenta e a curva de `system.cpu` sobe.
+**Como validar:** Em ~1 min o quadrado do host esquenta e a curva de `system.cpu` sobe —
+quanto mais próximo do total de cores você rodar, mais perto de 100% ela chega.
 
 ### Exercício 4 — Metrics Explorer
 
@@ -44,7 +52,13 @@ Em **Infrastructure > Metrics Explorer**, coloque `system.load.1`, `system.load.
 
 ### Exercício 5 — Alerta de threshold
 
-Crie uma regra **Custom threshold** para CPU do host acima de 80% por 2 minutos, checando a cada minuto, com ação de log/índice. Provoque a carga de novo.
+Crie uma regra **Custom threshold** para CPU do host acima de 80% por 2 minutos, checando a cada minuto, com ação de log/índice. Provoque a carga de novo (mantendo o número de loops do Exercício 3 até passar de 80%, senão a regra nunca vê o pico).
+
+> **Pegadinha real:** `system.cpu.total.norm.pct` é armazenado como **fração 0–1**, não como
+> 0–100. Se a UI do Custom Threshold pedir o valor sem o símbolo `%`, digite **0.8** — "80"
+> literal nunca vai disparar, porque nenhum valor real do campo passa de 1. Confirmado testando
+> a regra via API: com threshold `80` ela nunca disparou mesmo com CPU real em 0.87; com
+> threshold `0.8` disparou corretamente e recuperou quando a carga cessou.
 
 **Como validar:** A regra dispara e aparece em Observability > Alerts.
 

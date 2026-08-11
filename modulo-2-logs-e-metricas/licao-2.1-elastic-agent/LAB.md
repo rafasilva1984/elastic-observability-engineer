@@ -36,6 +36,12 @@ Rode: `docker exec agente-host-onp elastic-agent status` e depois `docker exec a
 
 **Como validar:** Você lê o status por componente (filestream, system/metrics, etc.), não só "o agente está no ar".
 
+> **Nota:** é esperado ver `docker/metrics` como **DEGRADED** ("failed to connect to the
+> docker API at unix:///var/run/docker.sock") — o container do agente nesta plataforma não
+> tem o socket do Docker montado. Não é erro de configuração seu; é o próprio cenário de
+> diagnóstico: treine reconhecer, pela mensagem, que a causa é falta de acesso ao socket, não
+> um problema na integração em si.
+
 ### Exercício 5 — Onde o dado cai
 
 No Dev Tools, rode `GET _cat/indices/.ds-metrics-system*?v` e `GET _data_stream/metrics-system.cpu-default`. Relacione: integração → dataset → data stream.
@@ -46,7 +52,15 @@ No Dev Tools, rode `GET _cat/indices/.ds-metrics-system*?v` e `GET _data_stream/
 
 ## 🔒 Desafio autônomo
 
-Provoque uma falha silenciosa e diagnostique: em **Fleet > Settings**, altere o *output* padrão para um host inválido (ex.: `http://elasticsearch-errado:9200`), salve e observe. Responda: (1) o agente continua **Healthy** na UI? (2) o dado continua chegando? (3) qual mensagem aparece nos logs do container? Depois **restaure** o output para `http://elasticsearch:9200` e prove a recuperação. Escreva a lição aprendida em uma frase.
+Provoque uma falha silenciosa e diagnostique. **Nesta plataforma o output "default" vem
+preconfigurado via variável de ambiente do Kibana e não pode ser editado** (Fleet recusa com
+"Preconfigured output ... cannot be updated outside of kibana config file") — então crie um
+**novo** output em **Fleet > Settings > Outputs > Add output** apontando para um host inválido
+(ex.: `http://elasticsearch-errado:9200`), depois abra **Agent policies > ONP - Host >
+Settings** e troque o *output for integrations* para esse novo output. Salve e observe.
+Responda: (1) o agente continua **Healthy** na UI? (2) o dado continua chegando? (3) qual
+mensagem aparece nos logs do container? Depois **restaure** a policy para usar o output
+default novamente e prove a recuperação. Escreva a lição aprendida em uma frase.
 
 > Sem passo a passo — é assim que o exame cobra. Se travar, a documentação
 > oficial está liberada: treine **achar**, não decorar.
