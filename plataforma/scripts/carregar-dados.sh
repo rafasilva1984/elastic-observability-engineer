@@ -91,6 +91,27 @@ fi
 #  folga na precisão exata de double do awk (2^53 ~ 9e15). Com o 1103515245
 #  do rand() clássico o produto passaria de 2e18 e a aritmética perderia
 #  precisão em silêncio, gerando valores degenerados.
+#
+#  ESPAÇAMENTO NÃO É CONSTANTE DE PROPÓSITO (correção pós-lançamento).
+#  A primeira versão usava `ts = agora - i*1680`: intervalo fixo, sem
+#  nenhuma variação na taxa de eventos. Resultado: 2-3 documentos por hora,
+#  o tempo todo, por 14 dias — zero desvio real para detectar. Um job de ML
+#  (Lab 5.1) rodava, fechava, e devolvia ZERO anomaly records: nada para
+#  clicar no Single Metric Viewer, Anomaly Explorer vazio, Forecast sem
+#  graça. Agora dois blocos da janela têm espaçamento diferente: uma rajada
+#  (pico de tráfego, ~3 dias atrás) e um vão largo (queda/indisponibilidade,
+#  ~6,5 dias atrás) — desvios de verdade pro detector `count` encontrar.
+#
+#  MESMO PROBLEMA EM DOIS OUTROS CAMPOS (Lab 5.2):
+#  `clientip` era 100% aleatório por documento -> cardinalidade 720/720, sem
+#  NENHUM IP repetido. Um job `population` (count over clientip) não acha
+#  outlier porque não existe "população": todo mundo visita 1x só. Agora um
+#  pool fixo de IPs "normais" se repete (comportamento de visitante regular)
+#  e um IP fixo aparece bem mais que os outros (o outlier que o job acha).
+#  `url` tinha distribuição quase uniforme entre as 8 rotas -> um job `rare`
+#  não encontra nada raro porque nada É raro. Agora dois documentos forçam
+#  a rota /admin/debug, que nunca mais se repete -- a "agulha no palheiro"
+#  que o detector `rare` existe para achar.
 # ---------------------------------------------------------------------------
 echo "==> Gerando e indexando ${TOTAL_DOCS} documentos (14 dias de tráfego)"
 
@@ -108,8 +129,21 @@ gera_ndjson() {
     ne = split("html css js png json", ext, " ")
     na = split("Mozilla/5.0 curl/8.4.0 PostmanRuntime/7.39", ua, " ")
 
+    npool = 40
+    for (p = 1; p <= npool; p++) ip_pool[p] = (rnd(223) + 1) "." rnd(256) "." rnd(256) "." rnd(256)
+    ip_outlier = "198.51.100.77"
+
+    cum = 0
     for (i = 0; i < total; i++) {
-      ts = (agora - i * 1680) * 1000
+      # rajada (pico): ~83min de janela com evento a cada ~4min, em vez de 28min
+      if      (i >= 150 && i < 170) delta = 250
+      # rajada de um unico IP (scraper): ~50min, evento a cada ~100s, sempre o mesmo IP
+      else if (i >= 300 && i < 330) delta = 100
+      # vão largo (queda/indisponibilidade): ~27h de janela com evento a cada ~108min
+      else if (i >= 400 && i < 415) delta = 6500
+      else                          delta = 1680
+      if (i > 0) cum += delta
+      ts = (agora - cum) * 1000
       k  = rnd(np) + 1
       r  = rnd(100)
       if      (r < 78) resp = 200
@@ -117,12 +151,16 @@ gera_ndjson() {
       else if (r < 95) resp = 301
       else             resp = 500
       bytes = rnd(8000) + 200
-      ip = (rnd(223) + 1) "." rnd(256) "." rnd(256) "." rnd(256)
+      if      (i >= 300 && i < 330) ip = ip_outlier
+      else if (rnd(100) < 3)        ip = ip_outlier
+      else                          ip = ip_pool[rnd(npool) + 1]
+      if (i == 500 || i == 501) urlv = "/admin/debug"
+      else                       urlv = url[rnd(nu) + 1]
       ram = (rnd(16) + 2) * 1073741824
 
       printf "{\"index\":{}}\n"
       printf "{\"@timestamp\":%d,\"bytes\":%d,\"response\":\"%d\",\"url\":\"%s\",\"clientip\":\"%s\",\"extension\":\"%s\",\"geo\":{\"src\":\"%s\",\"dest\":\"BR\",\"coordinates\":{\"lon\":%s,\"lat\":%s}},\"machine\":{\"os\":\"%s\",\"ram\":%d},\"user_agent\":{\"original\":\"%s\"}}\n", \
-        ts, bytes, resp, url[rnd(nu)+1], ip, ext[rnd(ne)+1], \
+        ts, bytes, resp, urlv, ip, ext[rnd(ne)+1], \
         pais[k], lon[k], lat[k], so[rnd(ns)+1], ram, ua[rnd(na)+1]
     }
   }'

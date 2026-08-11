@@ -30,6 +30,14 @@ Crie um index template para `onp-ilm-*` com `data_stream: {}` e `index.lifecycle
 
 **Como validar:** O template aparece e referencia a política.
 
+> **Pegadinha real:** inclua também `index.number_of_replicas: 0` nas settings do template.
+> Nosso cluster de lab é **single-node** — se o índice nascer com o padrão de 1 réplica, ela
+> nunca vai ser alocada (não há um segundo nó pra colocá-la), e a ação `migrate` da fase warm
+> fica **travada para sempre** em "Waiting for all shard copies to be active"
+> (`GET _cluster/allocation/explain` confirma `"can_allocate":"no"`). O índice nunca sai da warm,
+> a fase delete nunca chega, e o ciclo completo deste lab não fecha. Sem essa flag você não vai
+> ver erro nenhum na hora — só vai ficar esperando uma transição que nunca vem.
+
 ### Exercício 4 — Gerar e observar
 
 Indexe 60+ documentos no data stream `onp-ilm-teste` e acompanhe com `GET .ds-onp-ilm-teste-*/_ilm/explain?human` a cada 30 segundos.
