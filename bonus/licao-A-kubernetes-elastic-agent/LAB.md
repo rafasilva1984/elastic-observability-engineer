@@ -1,7 +1,8 @@
 # Lab A — Monitorar um cluster Kubernetes
 
-> Espelha o **Lab A** do curso oficial. A plataforma já está no ar:
-> aqui você **pratica o tema**, não monta ambiente.
+> Espelha o **Lab A** do curso oficial. A plataforma do curso (`plataforma/`) já
+> está no ar, mas ela não inclui Kubernetes: este é o único lab da trilha em
+> que você sobe um ambiente próprio, à parte.
 
 Este bônus precisa de um cluster local (k3d, kind ou minikube). Ele é o único lab que sobe ambiente próprio — por isso está fora da trilha oficial.
 

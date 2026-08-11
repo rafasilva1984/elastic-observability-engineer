@@ -25,8 +25,10 @@ cd ../../plataforma
 ./scripts/validar.sh      # confirma que está tudo certo
 ```
 
-Você **não** precisa subir nada específico desta lição. O foco aqui é o
-**exercício sobre o tema**, não montar infraestrutura.
+Diferente das demais lições, esta **exige infraestrutura própria**: um
+cluster Kubernetes local (k3d, kind ou minikube) não faz parte da
+`plataforma/` do curso. O Fleet Server da plataforma continua sendo o
+destino do agente — só o cluster é seu.
 
 ## Sequência da lição
 

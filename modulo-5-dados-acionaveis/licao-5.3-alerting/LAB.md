@@ -20,7 +20,7 @@ Em **Stack Management > Alerts and Insights > Connectors**, crie um conector do 
 
 ### Exercício 2 — Regra de threshold
 
-Crie uma regra **Custom threshold** sobre os logs da aplicação: contagem de documentos com `log.level: ERROR` acima de 5 em 5 minutos, checando a cada minuto, com ação no conector Index.
+Crie uma regra **Custom threshold** sobre os logs da aplicação (`logs-app_exemplo-default`, da lição 2.2): contagem de documentos cujo `message` contém `ERROR` acima de 5 em 5 minutos, checando a cada minuto, com ação no conector Index. (Se você já aplicou o pipeline da lição 4.1 aos dados reais no desafio autônomo, pode filtrar por `log.level: ERROR` em vez do texto cru — o resultado é o mesmo.)
 
 **Como validar:** A regra fica ativa e, quando dispara, um documento aparece em `onp-alertas`.
 

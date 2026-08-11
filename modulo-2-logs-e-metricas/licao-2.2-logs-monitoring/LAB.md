@@ -46,7 +46,13 @@ Tente montar uma visualização de "média de duration_ms por serviço". Não va
 
 ## 🔒 Desafio autônomo
 
-Colete um SEGUNDO arquivo de log, com formato diferente. Crie `/var/log/app/nginx-access.log` dentro do container do gerador com 3 linhas no formato *combined* (busque o formato na documentação oficial), configure uma nova entrada de Custom Logs com dataset `nginx_exemplo` e prove que os documentos chegaram. Responda: por que usar um dataset separado em vez de jogar tudo no mesmo?
+Colete um SEGUNDO arquivo de log, com formato diferente. Crie `/var/log/app/nginx-access.log` dentro do container do gerador com pelo menos 15-20 linhas no formato *combined* (busque o formato na documentação oficial), configure uma nova entrada de Custom Logs com dataset `nginx_exemplo` e prove que os documentos chegaram. Responda: por que usar um dataset separado em vez de jogar tudo no mesmo?
+
+> **Pegadinha real:** o input `filestream` só começa a ingerir um arquivo depois que ele atinge
+> **1024 bytes** (usados para o fingerprint que identifica o arquivo). Um arquivo de teste com
+> só 2-3 linhas curtas fica parado, "Healthy" no `elastic-agent status`, mas sem publicar nenhum
+> documento — nenhum erro aparece. Se o count ficar em zero mesmo com a integração Healthy, é
+> isso: aumente o arquivo (mais linhas) até passar de 1024 bytes.
 
 > Sem passo a passo — é assim que o exame cobra. Se travar, a documentação
 > oficial está liberada: treine **achar**, não decorar.
