@@ -14,9 +14,13 @@ O índice `onp-web-logs` já tem `clientip` e `user_agent.original`. Vamos enriq
 
 ### Exercício 1 — GeoIP
 
-Crie um pipeline com o processor `geoip` sobre `clientip`, com `target_field` adequado. Teste no Simulate com um IP público (ex.: `8.8.8.8`).
+Crie um pipeline com o processor `geoip` sobre `clientip`, com `target_field` adequado. Teste no Simulate com um IP público (ex.: `89.160.20.128`).
 
 **Como validar:** O documento ganha país, cidade e coordenadas (`location`).
+
+> **Nota:** `8.8.8.8` (Google DNS) é tentador de usar como exemplo, mas o GeoLite2 não tem dado
+> de cidade pra IPs anycast como esse — só país/continente/coordenadas aparecem, sem
+> `city_name`. Use um IP "normal" como o sugerido acima se quiser ver os três níveis completos.
 
 ### Exercício 2 — User agent
 
