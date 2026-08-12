@@ -46,7 +46,7 @@ Para cada pergunta escolha o gráfico e justifique em uma frase: (1) o tráfego 
 
 ## 🔒 Desafio autônomo
 
-Construa uma visualização que hoje está ERRADA de propósito e conserte: faça uma pizza com Top 20 de `url` (vai ficar ilegível), depois refaça a mesma pergunta com o formato adequado. Escreva a regra que você extraiu disso. Bônus: monte um gráfico com um campo de altíssima cardinalidade (ex.: `clientip`) e explique por que ele é ruim **para o cluster**, não só para os olhos.
+Construa uma visualização que hoje está ERRADA de propósito e conserte: faça uma pizza com Top 20 de `clientip` (vai ficar ilegível — o campo tem ~40 IPs distintos nesta plataforma, `url` não serve pra esse exercício porque só tem 9 valores possíveis), depois refaça a mesma pergunta com o formato adequado (ex.: tabela ordenada, ou Top 10 em vez de Top 20). Escreva a regra que você extraiu disso. Bônus: usando o mesmo campo `clientip`, explique por que uma agregação de altíssima cardinalidade é ruim **para o cluster**, não só para os olhos.
 
 > Sem passo a passo — é assim que o exame cobra. Se travar, a documentação
 > oficial está liberada: treine **achar**, não decorar.
